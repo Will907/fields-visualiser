@@ -2,24 +2,26 @@ from tkinter import *
 from tkinter import ttk
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.colors
 
+#Physical constants
 c = 299792458
 mu_0 = 4 * np.pi * 1e-7
 eps_0 = 1/(mu_0*(c**2) )
 qe = 1.602e-16
 
+#List of charges - replace later with set function
 charges = (
-    {"x":1, "y":1, "q":-1},
-    {"x":-1, "y":1, "q":-1},
-    {"x":1, "y":0, "q":-1},
-    {"x":-1, "y":0, "q":1},
-    {"x":1, "y":-1, "q":1},
-    {"x":-1, "y":-1, "q":1}
+    {"x":0, "y":0, "q":-1},
+    {"x":1, "y":0, "q":-2},
+    {"x":0, "y":1.5, "q":1},
+    {"x":-1, "y":1, "q":-2},
+    {"x":-2, "y":-1.6, "q":1},
 )
 
+#Electric field plotter
 def e_field(charges):
-
-    N = 50
+    N = 20
     x_start, x_end = -2.0, 2.0
     y_start, y_end = -2.0, 2.0
     x_values = np.linspace(x_start, x_end, N)
@@ -34,11 +36,15 @@ def e_field(charges):
         except UnboundLocalError:
             u = e[0]
             v = e[1]
-    strm = plt.streamplot(x_values,y_values,u,v,broken_streamlines=False)
-    #for i in range(len(charges)):
-        #fig.add_trace(go.Scatter(x=charges[i]["x"],y=charges[i]["y"],mode="markers",name="source"))
+    norm = np.sqrt(u**2+v**2)
+    u = u/norm
+    v = v/norm
+    col = np.log10(norm)
+    strm = plt.quiver(x_values,y_values,u,v,col,pivot="mid",cmap="plasma")
+    cbar = plt.colorbar()
+    cbar.ax.set_ylabel('log(E)')
 
-
+#Calculations for the electric field
 def e_eq(q,x1,y1,x2,y2):
     q *= qe
     r = np.sqrt((x2-x1)**2+(y2-y1)**2)
