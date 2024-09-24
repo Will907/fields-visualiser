@@ -12,12 +12,14 @@ qe = 1.602e-19
 
 #List of charges - replace later with set function
 charges = (
-    {"x":0, "y":1.5, "q":-1},
-    {"x":0, "y":-1.5, "q":1},
+    {"x":1, "y":1, "q":-1},
+    {"x":-1, "y":-1, "q":-1},
+    {"x":-1, "y":1, "q":1},
+    {"x":1, "y":-1, "q":1},
 )
 qs = []
 for charge in charges:
-    qs.append(charge["q"])
+    qs.append(np.abs(charge["q"]))
 qs = np.max(qs)
 
 #Electric field plotter
