@@ -14,8 +14,6 @@ qe = 1.602e-19
 charges = (
     {"x":0, "y":1.5, "q":-1},
     {"x":0, "y":-1.5, "q":1},
-    {"x":2, "y":0, "q":2},
-    {"x":-3, "y":0, "q":-2},
 )
 qs = []
 for charge in charges:
@@ -48,6 +46,12 @@ def e_field(charges):
             v = e[1]
     magnitude = np.sqrt(u**2+v**2)
     strm = plt.streamplot(x_values,y_values,u,v,broken_streamlines=True,density=qs*10,start_points=starts)
+    for charge in charges:
+        if charge["q"] > 0:
+            color = 'red' 
+        else:
+            color = 'blue'
+        plt.scatter(charge["x"], charge["y"], color=color, s=200, zorder=5)
 
 #Calculations for the electric field
 def e_eq(q,x1,y1,x2,y2):
