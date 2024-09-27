@@ -12,10 +12,16 @@ qe = 1.602e-19
 
 #List of charges - replace later with set function
 charges = (
-    {"x":-1, "y":0, "q":1},
-    {"x":1, "y":0, "q":1},
-    {"x":0, "y":-1, "q":-1},
-    {"x":0, "y":1, "q":-1},
+    {"x":3, "y":4, "q":1},
+    {"x":3, "y":2, "q":1},
+    {"x":3, "y":0, "q":1},
+    {"x":3, "y":-2, "q":1},
+    {"x":3, "y":-4, "q":1},
+    {"x":-3, "y":4, "q":-1},
+    {"x":-3, "y":2, "q":-1},
+    {"x":-3, "y":0, "q":-1},
+    {"x":-3, "y":-2, "q":-1},
+    {"x":-3, "y":-4, "q":-1},
 )
 qs = []
 for charge in charges:
@@ -60,13 +66,16 @@ def e_field(charges):
     potentials.cmap.set_under('blue')
     potentials.cmap.set_over('red')
     cb = plt.colorbar()
-    cb.set_label("Electric Potential")
+    cb.set_label("Electric Potential (V)")
     for charge in charges:
         if charge["q"] > 0:
             color = 'red' 
         else:
             color = 'blue'
         plt.scatter(charge["x"], charge["y"], color=color, s=100, zorder=5)
+    pzero = input("Display 0 potential line (y/n): ").strip().lower()
+    if pzero.startswith("y"):
+        pzero = plt.contour(x_values,y_values,V,levels=np.array([0]))
 
 #Calculations for the electric field
 def e_eq(q,x1,y1,x2,y2):
