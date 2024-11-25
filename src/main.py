@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors
 import time as t
+import sys
 
 #Physical constants
 c = 299792458
@@ -36,10 +37,14 @@ def e_field(charges):
     N = int(25 * np.max([x_end-y_start,y_end-y_start]))
     basestreams = 12 #replace with setting
     starts = []
+    
+    #create streamplot start locations
     for charge in charges:
         for i in range(int(abs(charge.q)*basestreams/qmax)):
             theta = 2*i*np.pi / (np.abs(charge.q)*basestreams/qmax)
-            starts.append([0.3*np.cos(theta)+charge.xpos,0.3*np.sin(theta)+charge.ypos])
+            next = [0.3*np.cos(theta)+charge.xpos,0.3*np.sin(theta)+charge.ypos]
+            if not(next[0] >= x_end or next[0] <= x_start or next[1] >= y_end or next[1] <= y_start):
+                starts.append(next)
     r = max(((x_end-x_start)/N), ((y_end-y_start)/N))
     x_values = np.linspace(x_start, x_end, N)
     y_values = np.linspace(y_start, y_end, N)
@@ -47,6 +52,7 @@ def e_field(charges):
     u, v = np.zeros_like(X), np.zeros_like(Y)
     V = np.zeros_like(X)
     
+    #electric field and potential superposition
     for charge in charges:
         e = e_eq(charge.q,charge.xpos,charge.ypos,X,Y)
         u += e[0]
@@ -57,6 +63,7 @@ def e_field(charges):
     levels = np.linspace(-2*Vdev,2*Vdev,30)
     magnitude = np.sqrt(u**2+v**2)
     
+    #plot field and potential map
     ax.clear()
     if len(charges) > 0:
         field = ax.streamplot(x_values,y_values,u,v,density=8,start_points=starts,color=(0.2,0.2,0.2,0.7))
@@ -69,6 +76,7 @@ def e_field(charges):
     else: 
         field = ax.streamplot(x_values,y_values,u,v)
     
+    #plots point charges
     for charge in charges:
         if charge.q > 0:
             color = 'red' 
@@ -89,23 +97,53 @@ def e_eq(q,x1,y1,x2,y2):
         r_v[i] = np.nan_to_num(r_v[i] * (q/(4*np.pi*eps_0*r**3)))
     return np.nan_to_num(r_v)
 
+#calculations for electric potential
 def e_pot(q,x1,y1,x2,y2):
     q *= qe
     r = np.sqrt((x2-x1)**2+(y2-y1)**2)
     v = np.nan_to_num(q / (4*np.pi*eps_0*r))
     return v
 
+#click event handling
 def on_click(event):
     xin, yin = event.xdata, event.ydata
-    if xin is not None and yin is not None:
-        qin = 1 if len(charges) % 2 == 0 else -1
-    new_charge = PointCharge(xin,yin,qin)
-    charges.append(new_charge)
+    if mode == "add":
+        new_charge = PointCharge(xin,yin,qin)
+        charges.append(new_charge)
+    elif mode == "del":
+        if len(charges) > 0:
+            mindist = None
+            if xin is not None and yin is not None:
+                for charge in charges:
+                    dist = np.sqrt((xin-charge.xpos)**2+(yin-charge.ypos)**2)
+                    if mindist == None:
+                        mindist = dist + 0
+                        remove = charges.index(charge)
+                    elif dist <= mindist:
+                        mindist = dist + 0
+                        remove = charges.index(charge)
+                charges.pop(remove)
     e_field(charges)
-        
+
+def keypress(event): #needs completing
+    global mode
+    global qin
+    print("pressed", event.key)
+    sys.stdout.flush()
+    if event.key == "d":
+        mode = "del"
+    elif event.key == "a":
+        mode = "add"
+    elif event.key == "p":
+        qin = 1
+    elif event.key == "n":
+        qin = -1
 
 fig, ax = plt.subplots()
 ax.set_aspect('equal', adjustable='box')
 fig.canvas.mpl_connect('button_press_event', on_click)
+fig.canvas.mpl_connect('key_press_event', keypress)
 e_field(charges)
-plt.show()
+mode = "add"
+qin = 1
+if __name__ == "__main__": plt.show()
