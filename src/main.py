@@ -147,7 +147,6 @@ def on_click(event):
                         mindist = dist + 0
                         moveq = charge.q
                         remove = charges.index(charge)
-                print(moveq)
                 qin = moveq
                 charges.pop(remove)
                 mode = "add"
@@ -156,22 +155,27 @@ def on_click(event):
 
 def keypress(event): #needs completing
     global mode
-    global qin
-    print("Pressed", event.key)
     sys.stdout.flush()
     if event.key == "d":
         mode = "del"
     elif event.key == "a":
         mode = "add"
-    elif event.key == "p":
-        qin = np.abs(qin)
-    elif event.key == "n":
-        qin = -np.abs(qin)
     elif event.key == "m":
         mode = "move"
 
+def setq(q):
+    global qin
+    qin = q
+
 def get_figure():
     return fig
+
+def get_mode():
+    return mode
+
+def set_mode(md):
+    global mode
+    mode = md.lower()
 
 fig, ax = plt.subplots()
 ax.set_aspect('equal', adjustable='box')
