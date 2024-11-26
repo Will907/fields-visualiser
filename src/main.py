@@ -106,10 +106,19 @@ def e_pot(q,x1,y1,x2,y2):
 
 #click event handling
 def on_click(event):
+    global qin
+    global mode
+    global moving
+    global prevq
     xin, yin = event.xdata, event.ydata
     if mode == "add":
+        print(qin)
         new_charge = PointCharge(xin,yin,qin)
         charges.append(new_charge)
+        if moving:
+            qin = prevq + 0
+            moving = False
+            mode = "move"
     elif mode == "del":
         if len(charges) > 0:
             mindist = None
@@ -123,21 +132,46 @@ def on_click(event):
                         mindist = dist + 0
                         remove = charges.index(charge)
                 charges.pop(remove)
+    elif mode == "move":
+        prevq = qin + 0
+        if len(charges) > 0:
+            mindist = None
+            if xin is not None and yin is not None:
+                for charge in charges:
+                    dist = np.sqrt((xin-charge.xpos)**2+(yin-charge.ypos)**2)
+                    if mindist == None:
+                        mindist = dist + 0
+                        moveq = charge.q
+                        remove = charges.index(charge)
+                    elif dist <= mindist:
+                        mindist = dist + 0
+                        moveq = charge.q
+                        remove = charges.index(charge)
+                print(moveq)
+                qin = moveq
+                charges.pop(remove)
+                mode = "add"
+                moving = True
     e_field(charges)
 
 def keypress(event): #needs completing
     global mode
     global qin
-    print("pressed", event.key)
+    print("Pressed", event.key)
     sys.stdout.flush()
     if event.key == "d":
         mode = "del"
     elif event.key == "a":
         mode = "add"
     elif event.key == "p":
-        qin = 1
+        qin = np.abs(qin)
     elif event.key == "n":
-        qin = -1
+        qin = -np.abs(qin)
+    elif event.key == "m":
+        mode = "move"
+
+def get_figure():
+    return fig
 
 fig, ax = plt.subplots()
 ax.set_aspect('equal', adjustable='box')
@@ -146,4 +180,5 @@ fig.canvas.mpl_connect('key_press_event', keypress)
 e_field(charges)
 mode = "add"
 qin = 1
+moving = False
 if __name__ == "__main__": plt.show()
