@@ -12,6 +12,13 @@ mu_0 = 4 * np.pi * 1e-7
 eps_0 = 1/(mu_0*(c**2) )
 qe = 1.602e-19
 
+x_start, x_end = -5.0, 5.0 #replace with setting to alter
+y_start, y_end = -5.0, 5.0
+N = int(25 * np.max([x_end-y_start,y_end-y_start]))
+x_values = np.linspace(x_start, x_end, N)
+y_values = np.linspace(y_start, y_end, N)
+X, Y = np.meshgrid(x_values,y_values)
+
 class Point():
     def __init__(self,x,y):
             self.xpos = x
@@ -22,6 +29,30 @@ class PointCharge(Point):
     def __init__(self,x,y,q):
         super(PointCharge, self).__init__(x,y)
         self.q = q
+        self.u, self.v = np.zeros_like(X), np.zeros_like(Y)
+        self.V = np.zeros_like(X)
+        
+        self.u, self.v = self.e_eq(X,Y)
+        self.V = self.e_pot(X,Y)
+    
+    def e_pot(self,x1,y1):
+        self.q *= qe
+        self.r = self.get_r(x1,y1)
+        self.v = np.nan_to_num(self.q / (4*np.pi*eps_0*self.r))
+        return self.v
+    
+    def e_eq(self,x1,y1):
+        self.q *= qe
+        self.r = self.get_r(x1,y1)
+        r_v = [self.xpos-x1,self.ypos-y1]
+        for i in range(len(r_v)):
+            r_v[i] = np.nan_to_num(r_v[i] * (self.q/(4*np.pi*eps_0*self.r**3)))
+        r_v = np.nan_to_num(r_v)
+        return r_v[0], r_v[1]
+    
+    def get_r(self,x1,y1):
+        return np.sqrt((self.xpos-x1)**2+(self.ypos-y1)**2)
+        
 #List of charges
 charges = []
 
@@ -32,9 +63,7 @@ def e_field(charges):
         for charge in charges:
             qs.append(np.abs(charge.q))
         qmax = np.max(qs)
-    x_start, x_end = -5.0, 5.0 #replace with setting to alter
-    y_start, y_end = -5.0, 5.0
-    N = int(25 * np.max([x_end-y_start,y_end-y_start]))
+    
     basestreams = 12 #replace with setting
     starts = []
     
@@ -45,36 +74,31 @@ def e_field(charges):
             next = [0.3*np.cos(theta)+charge.xpos,0.3*np.sin(theta)+charge.ypos]
             if not(next[0] >= x_end or next[0] <= x_start or next[1] >= y_end or next[1] <= y_start):
                 starts.append(next)
-    r = max(((x_end-x_start)/N), ((y_end-y_start)/N))
-    x_values = np.linspace(x_start, x_end, N)
-    y_values = np.linspace(y_start, y_end, N)
-    X, Y = np.meshgrid(x_values,y_values)
-    u, v = np.zeros_like(X), np.zeros_like(Y)
-    V = np.zeros_like(X)
+    
+    V_sum = np.zeros_like(X)
+    u_sum, v_sum = np.zeros_like(X), np.zeros_like(Y)
+    for charge in charges:
+        V_sum += charge.V
+        u_sum += charge.u
+        v_sum += charge.v
     
     #electric field and potential superposition
-    for charge in charges:
-        e = e_eq(charge.q,charge.xpos,charge.ypos,X,Y)
-        u += e[0]
-        v += e[1]
-        ve = e_pot(charge.q,charge.xpos,charge.ypos,X,Y)
-        V += ve
-    Vdev = np.std(V)
+    Vdev = np.std(V_sum)
     levels = np.linspace(-2*Vdev,2*Vdev,30)
-    magnitude = np.sqrt(u**2+v**2)
+    magnitude = np.sqrt(u_sum**2+v_sum**2)
     
     #plot field and potential map
     ax.clear()
     if len(charges) > 0:
-        field = ax.streamplot(x_values,y_values,u,v,density=8,start_points=starts,color=(0.2,0.2,0.2,0.7))
-        potentials = ax.contourf(x_values,y_values,V,levels=levels,cmap="seismic",alpha=0.7,extend="both")
+        field = ax.streamplot(x_values,y_values,u_sum,v_sum,density=8,start_points=starts,color=(0.2,0.2,0.2,0.7))
+        potentials = ax.contourf(x_values,y_values,V_sum,levels=levels,cmap="seismic",alpha=0.7,extend="both")
         potentials.cmap.set_under('blue')
         potentials.cmap.set_over('red')
         if not hasattr(ax, 'cbar') or ax.cbar is None:  # Only add the colorbar once
             ax.cbar = fig.colorbar(potentials, ax=ax)
             ax.cbar.set_label("Electric Potential (V)")
     else: 
-        field = ax.streamplot(x_values,y_values,u,v)
+        field = ax.streamplot(x_values,y_values,u_sum,v_sum)
     
     #plots point charges
     for charge in charges:
@@ -84,25 +108,9 @@ def e_field(charges):
             color = 'blue'
         ax.scatter(charge.xpos, charge.ypos, color=color, s=100, zorder=5)
     
-    pzero = ax.contour(x_values,y_values,V,levels=np.array([0]),colors="k")
+    pzero = ax.contour(x_values,y_values,V_sum,levels=np.array([0]),colors="k")
     title = ax.set_title("Electric Field Visualisation")
     fig.canvas.draw()
-
-#Calculations for the electric field
-def e_eq(q,x1,y1,x2,y2):
-    q *= qe
-    r = np.sqrt((x2-x1)**2+(y2-y1)**2)
-    r_v = [x2-x1,y2-y1]
-    for i in range(len(r_v)):
-        r_v[i] = np.nan_to_num(r_v[i] * (q/(4*np.pi*eps_0*r**3)))
-    return np.nan_to_num(r_v)
-
-#calculations for electric potential
-def e_pot(q,x1,y1,x2,y2):
-    q *= qe
-    r = np.sqrt((x2-x1)**2+(y2-y1)**2)
-    v = np.nan_to_num(q / (4*np.pi*eps_0*r))
-    return v
 
 #click event handling
 def on_click(event):
