@@ -111,6 +111,8 @@ def on_click(event):
     global moving
     global prevq
     xin, yin = event.xdata, event.ydata
+    if xin is None or yin is None:
+        return
     if mode == "add":
         print(qin)
         new_charge = PointCharge(xin,yin,qin)
