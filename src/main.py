@@ -26,9 +26,12 @@ class Point():
         
 
 class PointCharge(Point):
+    charges = []
+    
     def __init__(self,x,y,q):
         super(PointCharge, self).__init__(x,y)
         self.q = q
+        self.q_actual = q*qe
         self.u, self.v = np.zeros_like(X), np.zeros_like(Y)
         self.V = np.zeros_like(X)
         
@@ -36,27 +39,41 @@ class PointCharge(Point):
         self.V = self.e_pot(X,Y)
     
     def e_pot(self,x1,y1):
-        self.q *= qe
-        self.r = self.get_r(x1,y1)
-        self.v = np.nan_to_num(self.q / (4*np.pi*eps_0*self.r))
-        return self.v
+        r = np.sqrt((self.xpos-x1)**2+(self.ypos-y1)**2)
+        v = np.nan_to_num(self.q_actual / (4*np.pi*eps_0*r))
+        return v
     
     def e_eq(self,x1,y1):
-        self.q *= qe
-        self.r = self.get_r(x1,y1)
+        r = np.sqrt((self.xpos-x1)**2+(self.ypos-y1)**2)
         r_v = [self.xpos-x1,self.ypos-y1]
         for i in range(len(r_v)):
-            r_v[i] = np.nan_to_num(r_v[i] * (self.q/(4*np.pi*eps_0*self.r**3)))
+            r_v[i] = np.nan_to_num(r_v[i] * (self.q_actual/(4*np.pi*eps_0*r**3)))
         r_v = np.nan_to_num(r_v)
         return r_v[0], r_v[1]
     
-    def get_r(self,x1,y1):
-        return np.sqrt((self.xpos-x1)**2+(self.ypos-y1)**2)
+    @classmethod
+    def get_closest(cls,x,y):
+        if len(cls.charges) != 0:
+            mindist = None
+            for charge in cls.charges:
+                dist = np.sqrt((x-charge.xpos)**2+(y-charge.ypos)**2)
+                if mindist == None:
+                    mindist = dist + 0
+                    closest = cls.charges.index(charge)
+                elif dist <= mindist:
+                    mindist = dist + 0
+                    closest = cls.charges.index(charge)
+            return closest
+    
+    @classmethod
+    def add_charge(cls,x,y,q):
+        cls.charges.append(PointCharge(x,y,q))
+    
+    @classmethod
+    def del_charge(cls,index):
+        cls.charges.remove(index)
         
-#List of charges
-charges = []
-
-#Electric field plotter
+pcharges = PointCharge.charges
 def e_field(charges):
     qs = []
     if len(charges) > 0:
@@ -90,7 +107,7 @@ def e_field(charges):
     #plot field and potential map
     ax.clear()
     if len(charges) > 0:
-        field = ax.streamplot(x_values,y_values,u_sum,v_sum,density=8,start_points=starts,color=(0.2,0.2,0.2,0.7))
+        field = ax.streamplot(x_values,y_values,-u_sum,-v_sum,density=8,start_points=starts,color=(0.2,0.2,0.2,0.7))
         potentials = ax.contourf(x_values,y_values,V_sum,levels=levels,cmap="seismic",alpha=0.7,extend="both")
         potentials.cmap.set_under('blue')
         potentials.cmap.set_over('red')
@@ -121,47 +138,29 @@ def on_click(event):
     xin, yin = event.xdata, event.ydata
     if xin is None or yin is None:
         return
+    if moving:
+        mode = "add"
     if mode == "add":
-        print(qin)
-        new_charge = PointCharge(xin,yin,qin)
-        charges.append(new_charge)
+        PointCharge.add_charge(xin,yin,qin)
         if moving:
             qin = prevq + 0
             moving = False
             mode = "move"
     elif mode == "del":
-        if len(charges) > 0:
-            mindist = None
+        if len(pcharges) > 0:
             if xin is not None and yin is not None:
-                for charge in charges:
-                    dist = np.sqrt((xin-charge.xpos)**2+(yin-charge.ypos)**2)
-                    if mindist == None:
-                        mindist = dist + 0
-                        remove = charges.index(charge)
-                    elif dist <= mindist:
-                        mindist = dist + 0
-                        remove = charges.index(charge)
-                charges.pop(remove)
+                closest = pcharges[PointCharge.get_closest(xin,yin)]
+                PointCharge.del_charge(closest)
     elif mode == "move":
         prevq = qin + 0
-        if len(charges) > 0:
-            mindist = None
+        if len(pcharges) > 0:
             if xin is not None and yin is not None:
-                for charge in charges:
-                    dist = np.sqrt((xin-charge.xpos)**2+(yin-charge.ypos)**2)
-                    if mindist == None:
-                        mindist = dist + 0
-                        moveq = charge.q
-                        remove = charges.index(charge)
-                    elif dist <= mindist:
-                        mindist = dist + 0
-                        moveq = charge.q
-                        remove = charges.index(charge)
-                qin = moveq
-                charges.pop(remove)
+                closest = pcharges[PointCharge.get_closest(xin,yin)]
+                qin = closest.q
+                PointCharge.del_charge(closest)
                 mode = "add"
                 moving = True
-    e_field(charges)
+    e_field(pcharges)
 
 def keypress(event): #needs completing
     global mode
@@ -191,7 +190,7 @@ fig, ax = plt.subplots()
 ax.set_aspect('equal', adjustable='box')
 fig.canvas.mpl_connect('button_press_event', on_click)
 fig.canvas.mpl_connect('key_press_event', keypress)
-e_field(charges)
+e_field(pcharges)
 mode = "add"
 qin = 1
 moving = False
